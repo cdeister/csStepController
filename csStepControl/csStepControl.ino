@@ -24,18 +24,18 @@
 #include <Adafruit_SSD1306.h>
 
 #define OLED_RESET 5
-#define CS_PIN 10
+#define CS_PIN 10  //A4
 #define EN_PIN 2 //enable (CFG6)
 #define DIR_PIN 23 //direction
 #define STEP_PIN 22 //step
-#define MOSI_PIN  12
-#define MISO_PIN 11
-#define SCK_PIN  13
+#define MOSI_PIN  12 //B5
+#define MISO_PIN 11 //B4
+#define SCK_PIN  13 //DFU
 
 #define s1Pin 6
 #define s2Pin 7
 
-
+int screenUpdateCount=1000;
 int dirDebounce = 0;
 
 
@@ -46,8 +46,8 @@ Adafruit_SSD1306 display(OLED_RESET);
 
 // m=microSteps; t=totalSteps; d='direction'; s=speed; a=acel; z=state;
 char knownHeaders[] = {'m', 't', 'd', 's', 'a', 'z', 'p', 'b'};
-float knownValues[] = {256, 50, 1, 100, 10000, 0, 0, 2};
-float defaultSet[] = {256, 50, 1, 100, 10000, 0, 0, 2};
+float knownValues[] = {256, 50, 1, 1000, 1000, 0, 0, 2};
+float defaultSet[] = {256, 50, 1, 1000, 1000, 0, 0, 2};
 int knownCount = 8;
 float volPerStep = 2.529423872607;
 float volPerMu = volPerStep / knownValues[0];
@@ -61,7 +61,7 @@ void createHomeScreen() {
   display.clearDisplay();
   display.setCursor(0, 0);
   display.print("s:");
-  display.print(int(knownValues[2]*knownValues[3]*knownValues[0]));
+  display.print(int(knownValues[2]*knownValues[3]));
   display.setCursor(60, 0);
   display.print("mode:");
   if (knownValues[7] == 1) {
@@ -111,7 +111,7 @@ void setup() {
 
   driver.begin();
 
-  driver.rms_current(600);  // Set stepper current to 600mA. The command is the same as command TMC2130.setCurrent(600, 0.11, 0.5);
+  driver.rms_current(10);  // Set stepper current to 600mA. The command is the same as command TMC2130.setCurrent(600, 0.11, 0.5);
   driver.stealthChop(1);  // Enable extremely quiet stepping
   Serial.begin(9600);
   pinMode(EN_PIN, OUTPUT);
@@ -195,7 +195,7 @@ void loop() {
   }
 
 
-  if (screenUpdate >= 500) {
+  if (screenUpdate >= screenUpdateCount) {
     createHomeScreen();
     screenUpdate = 0;
 
@@ -207,6 +207,7 @@ void loop() {
   // step state
   if (knownValues[5] == 1) {
     if (stateHeaders[1] == 0) {
+      screenUpdateCount=200000;
       digitalWrite(EN_PIN, LOW);
       baseTime = millis();
       stepper.setMaxSpeed(2000 * knownValues[0]);
@@ -233,6 +234,7 @@ void loop() {
         stepper.stop();
         digitalWrite(EN_PIN, HIGH); // disable motor
       }
+      screenUpdateCount=2000;
       Serial.print("csStep,");
       Serial.print(int(millis() - baseTime));
       Serial.print(',');
@@ -253,6 +255,7 @@ void loop() {
 
   else if (knownValues[5] == 2) {
     if (stateHeaders[2] == 0) {
+      screenUpdateCount=2000000;
       stateHeaders[0] = 0;
       stateHeaders[1] = 0;
       stateHeaders[2] = 1;
@@ -268,6 +271,7 @@ void loop() {
   // reset defaults state
   else if (knownValues[5] == 9) {
     if (stateHeaders[3] == 0) {
+      screenUpdateCount=2000000;
       stateHeaders[0] = 0;
       stateHeaders[1] = 0;
       stateHeaders[2] = 0;
